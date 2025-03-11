@@ -9,5 +9,18 @@ class Vehiculo extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['tipo', 'placa', 'horas', 'tarifa'];
+    protected $fillable = [
+        'tipo',
+        'placa',
+        'horas',
+        'tarifa',
+        'fecha_entrada',
+        'fecha_salida',
+        'estacionado',
+    ];
+
+    protected $dates = [
+        'fecha_entrada',
+        'fecha_salida',
+    ];
 }

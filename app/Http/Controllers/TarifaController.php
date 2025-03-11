@@ -6,7 +6,6 @@ use App\Services\TarifaService;
 use Illuminate\Http\Request;
 use App\Models\Vehiculo;
 
-
 class TarifaController extends Controller
 {
     protected $tarifaService;
@@ -16,88 +15,109 @@ class TarifaController extends Controller
         $this->tarifaService = $tarifaService;
     }
 
-    // public function calcular(Request $request)
-    // {
-    //     $tipo = $request->input('tipo'); // 'moto', 'carro', 'camion'
-    //     $placa = $request->input('placa'); // Placa del vehículo
-    //     $horas = $request->input('horas'); // Horas de estacionamiento
+    /**
+     * Registra la entrada de un vehículo al parqueadero.
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function registrarEntrada(Request $request)
+    {
+        $request->validate([
+            'tipo' => 'required|in:moto,carro,camion',
+            'placa' => 'required|string|min:5|max:10|unique:vehiculos,placa',
+        ]);
 
-    //     // Validar que las horas estén presentes
-    //     if (!$horas) {
-    //         return response()->json(['error' => 'Las horas de estacionamiento son requeridas'], 400);
-    //     }
+        $vehiculo = new Vehiculo();
+        $vehiculo->tipo = $request->input('tipo');
+        $vehiculo->placa = $request->input('placa');
+        $vehiculo->fecha_entrada = now(); 
+        $vehiculo->estacionado = true; 
+        $vehiculo->save();
 
-    //     // Calcular la tarifa
-    //     $tarifa = $this->tarifaService->calcularTarifa($tipo, $horas);
-
-    //     return response()->json([
-    //         'tipo' => $tipo,
-    //         'placa' => $placa,
-    //         'horas' => $horas,
-    //         'tarifa' => $tarifa,
-    //     ]);
-    // }
-
-    public function calcular(Request $request)
-{
-    $tipo = $request->input('tipo');
-    $placa = $request->input('placa');
-    $horas = $request->input('horas');
-
-    if (!$horas) {
-        return response()->json(['error' => 'Las horas de estacionamiento son requeridas'], 400);
+        return response()->json([
+            'mensaje' => 'Vehículo registrado con éxito',
+            'vehiculo' => $vehiculo,
+        ], 201);
     }
 
-    // Calcular la tarifa
-    $tarifa = $this->tarifaService->calcularTarifa($tipo, $horas);
+    /**
+     * Registra la salida de un vehículo y calcula la tarifa.
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function registrarSalida(Request $request)
+    {
+        $request->validate([
+            'placa' => 'required|string|min:5|max:10',
+        ]);
 
-    // Buscar el vehículo por placa o crearlo si no existe
-    $vehiculo = Vehiculo::firstOrNew(['placa' => $placa]);
-    $vehiculo->tipo = $tipo;
-    $vehiculo->horas = $horas;
-    $vehiculo->tarifa = $tarifa;
-    $vehiculo->save(); // Guarda el vehículo con la tarifa actualizada
+        $vehiculo = Vehiculo::where('placa', $request->input('placa'))->first();
 
-    return response()->json([
-        'tipo' => $tipo,
-        'placa' => $placa,
-        'horas' => $horas,
-        'tarifa' => $tarifa,
-    ]);
-}
+        if (!$vehiculo) {
+            return response()->json(['error' => 'Vehículo no encontrado'], 404);
+        }
 
 
+        if (!$vehiculo->estacionado) {
+            return response()->json(['error' => 'El vehículo ya salió del parqueadero'], 400);
+        }
+
+        $vehiculo->fecha_salida = now();
+        $vehiculo->estacionado = false;
+
+        $segundos = $vehiculo->fecha_entrada->diffInSeconds($vehiculo->fecha_salida);
+        $horas = $segundos / 3600; 
+
+        $tarifa = $this->tarifaService->calcularTarifa($vehiculo->tipo, $horas);
+
+        $vehiculo->horas = $horas;
+        $vehiculo->tarifa = $tarifa;
+        $vehiculo->save();
+
+        return response()->json([
+            'mensaje' => 'Vehículo salió del parqueadero',
+            'vehiculo' => $vehiculo,
+            'tarifa' => $tarifa,
+        ]);
+    }
+
+    /**
+     * Obtiene un vehículo por su placa.
+     *
+     * @param string $placa
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function get($placa)
-{
-    // Buscar el vehículo por placa
-    $vehiculo = Vehiculo::where('placa', $placa)->first();
+    {
+        $vehiculo = Vehiculo::where('placa', $placa)->first();
 
-    // Verificar si el vehículo existe
-    if (!$vehiculo) {
-        return response()->json(['error' => 'Vehículo no encontrado'], 404);
+        if (!$vehiculo) {
+            return response()->json(['error' => 'Vehículo no encontrado'], 404);
+        }
+
+        return response()->json([
+            'vehiculo' => $vehiculo,
+        ]);
     }
 
-    // Devolver la información del vehículo
-    return response()->json([
-        'tipo' => $vehiculo->tipo,
-        'placa' => $vehiculo->placa,
-        'horas' => $vehiculo->horas,
-        'tarifa' => $vehiculo->tarifa,
-    ]);
-}
+    /**
+     * Lista todos los vehículos registrados con paginación.
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function todosGet(Request $request)
+    {
+    
+        $vehiculos = Vehiculo::all();
+        return response()->json($vehiculos);
 
-public function todosGet()
-{
-    // Obtener todos los vehículos
-    $vehiculos = Vehiculo::all();
+        if ($vehiculos->isEmpty()) {
+            return response()->json(['error' => 'No hay vehículos registrados'], 404);
+        }
 
-    // Verificar si hay vehículos registrados
-    if ($vehiculos->isEmpty()) {
-        return response()->json(['error' => 'No hay vehículos registrados'], 404);
+        return response()->json($vehiculos);
     }
-
-    // Retornar la lista de vehículos
-    return response()->json($vehiculos);
-}
-
 }

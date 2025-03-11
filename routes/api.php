@@ -21,12 +21,24 @@ use App\Http\Controllers\TarifaController;
 // });
 
 
-Route::get('/vehiculos', [VehiculoController::class, 'index']);
-Route::post('/vehiculos', [VehiculoController::class, 'store']);
+// Route::get('/vehiculos', [VehiculoController::class, 'index']);
+// Route::post('/vehiculos', [VehiculoController::class, 'store']);
 
-Route::post('/calcular-tarifa', [TarifaController::class, 'calcular']);
+// Route::post('/calcular-tarifa', [TarifaController::class, 'calcular']);
 
+// Route::get('/vehiculos/{placa}', [TarifaController::class, 'get']);
+
+// Route::get('/vehiculos-todo', [TarifaController::class, 'todosGet']);
+
+
+Route::post('/vehiculos/entrada', [TarifaController::class, 'registrarEntrada']);
+
+// Registrar la salida de un vehículo
+Route::post('/vehiculos/salida', [TarifaController::class, 'registrarSalida']);
+
+// Obtener un vehículo por placa
 Route::get('/vehiculos/{placa}', [TarifaController::class, 'get']);
 
-Route::get('/vehiculos-todo', [TarifaController::class, 'todosGet']);
+// Listar todos los vehículos con paginación
+Route::get('/vehiculos', [TarifaController::class, 'todosGet']);
 

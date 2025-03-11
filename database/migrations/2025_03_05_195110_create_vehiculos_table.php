@@ -19,6 +19,9 @@ class CreateVehiculosTable extends Migration
             $table->string('placa')->unique(); // Placa del vehículo
             $table->float('horas')->default(0); // Horas de estacionamiento
             $table->integer('tarifa')->nullable(); // Tarifa a pagar 
+            $table->datetime('fecha_entrada')->useCurrent();
+            $table->datetime('fecha_salida')->nullable();  
+            $table->boolean('estacionado')->default(true); 
             $table->timestamps();
             $table->softDeletes();
         });
